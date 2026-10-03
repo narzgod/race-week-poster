@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Race Week Poster Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@700&family=Archivo+Black&family=Russo+One&family=Teko:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f2f0;--pn:#fff;--tx:#17171a;--mu:#6b6b73;--ln:#dcdce0;--ac:#e10600;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e0e11;--pn:#1a1a1f;--tx:#f1f1f3;--mu:#9a9aa5;--ln:#2e2e36}}
+:root[data-theme="dark"]{--bg:#0e0e11;--pn:#1a1a1f;--tx:#f1f1f3;--mu:#9a9aa5;--ln:#2e2e36}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,sans-serif}
+.app{display:grid;gap:12px;padding:10px;max-width:1100px;margin:auto}
+@media(min-width:860px){.app{grid-template-columns:auto 1fr;align-items:start}.stage{position:sticky;top:10px}}
+.stage{text-align:center}
+canvas{height:min(62vh,calc((100vw - 20px)*1.25));aspect-ratio:4/5;width:auto;max-width:100%;border-radius:8px;box-shadow:0 4px 24px #0004;touch-action:none;background:#333}
+@media(min-width:860px){canvas{height:min(88vh,860px)}}
+.hint{font-size:12px;color:var(--mu);margin:6px 0 0}
+.pn{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:10px;margin-bottom:10px}
+.pn h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu)}
+button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:7px 10px;cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
+.add{display:flex;flex-wrap:wrap;gap:6px}
+.li{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1px solid var(--ln);border-radius:8px;margin-bottom:4px;cursor:pointer}
+.li.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 10%,transparent)}
+.li b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li button{padding:3px 8px}
+.row{display:block;margin-bottom:8px}.row span{font-size:12px;color:var(--mu)}.row em{font-style:normal;float:right;font-size:12px;color:var(--mu)}
+.row input[type=range],.row select,.row textarea{width:100%;display:block}
+.row input[type=color]{width:100%;height:32px;padding:0;border:1px solid var(--ln);border-radius:6px;background:none}
+.row select,.row textarea{font:inherit;padding:6px;border-radius:6px;border:1px solid var(--ln);background:var(--bg);color:var(--tx)}
+.row input[type=range]{accent-color:var(--ac)}
+#msg{font-size:12px;color:var(--ac);margin-top:6px;min-height:16px}
+@font-face{font-family:"MotoGP Display";src:url(fonts/MotoGP-Display-Bold.ttf) format("truetype");font-weight:normal;font-style:normal}
+@font-face{font-family:"MotoGP Text";src:url(fonts/MotoGP-Text-Regular.ttf) format("truetype");font-weight:normal;font-style:normal}
+@font-face{font-family:"MotoGP Text Bold";src:url(fonts/MotoGP-Text-Bold.ttf) format("truetype");font-weight:normal;font-style:normal}
+</style></head><body>
+<div class="app">
+<div class="stage"><canvas id="cv" width="1080" height="1350"></canvas>
+<p class="hint">Tap objek di poster lalu geser. Atur detail di panel bawah.</p></div>
+<div>
+<div class="pn"><h3>Tambah</h3><div class="add" id="ad">
+<button data-add="text">+ Teks 3D</button><button data-add="driver">+ Driver</button><button data-add="logo">+ Logo</button><button data-add="flag">+ Bendera</button><button data-add="track">+ Foto Track</button><button data-add="car">+ Mobil</button><button data-add="light">+ Cahaya</button><button data-add="img">+ Gambar</button></div></div>
+<div class="pn"><h3>Layer (atas → bawah)</h3><div id="ls"></div></div>
+<div class="pn"><h3>Properti layer</h3><div id="pr"></div></div>
+<div class="pn"><h3>Latar &amp; efek global</h3><div id="gl"></div></div>
+<div class="pn"><button class="p" id="ex" style="width:100%">Simpan poster (PNG 1080×1350)</button><div id="msg"></div></div>
+</div></div>
+<script>
+const W=1080,H=1350,cv=document.getElementById('cv'),cx=cv.getContext('2d'),$=s=>document.querySelector(s);
+const FONTS=['MotoGP Display','MotoGP Text','MotoGP Text Bold','Anton','Bebas Neue','Oswald','Archivo Black','Russo One','Teko','Impact'];
+const BL=[['source-over','Normal'],['screen','Screen'],['lighter','Tambah'],['overlay','Overlay'],['soft-light','Soft Light'],['multiply','Multiply'],['color-dodge','Dodge']];
+const FL={ID:['h','#e70011','#ffffff'],MC:['h','#e0001b','#ffffff'],ES:['h',[1,'#aa151b'],[2,'#f1bf00'],[1,'#aa151b']],IT:['v','#009246','#ffffff','#ce2b37'],FR:['v','#0055a4','#ffffff','#ef4135'],DE:['h','#000000','#dd0000','#ffce00'],NL:['h','#ae1c28','#ffffff','#21468b'],CA:['v',[1,'#d52b1e'],[2,'#ffffff'],[1,'#d52b1e']],JP:['dot']};
+const hx=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)),hexA=(h,a)=>`rgba(${hx(h)},${a})`;
+const mix=(a,b,t)=>{const A=hx(a),B=hx(b);return`rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*t))})`};
+let L=[],sel=null,uid=1,refs={},drag=null,xp=false;
+const G={c1:'#ffd84a',c2:'#ff7a1a',c3:'#c40000',ang:0,tint:'#ff3b00',tintA:0,vig:.45};
+const C=()=>({x:540,y:675,rot:0,op:1,bl:'source-over'});
+const NM={driver:'Driver',logo:'Logo',track:'Foto Track',car:'Mobil',img:'Gambar'};
+const PD={driver:{w:520,x:540,y:360,fb:.3},logo:{w:260,x:540,y:1200},track:{w:1100,x:540,y:1000,ft:.35},car:{w:900,x:540,y:1050},img:{w:500}};
+const D={
+text:()=>({type:'text',name:'Teks',text:'TEKS',font:'Anton',size:200,sp:0,lineH:.95,skX:0,skY:0,sx:1,sy:1,c1:'#ffffff',c2:'#ffffff',depth:30,ea:90,ec:'#d9d9d9',ec2:'#6e6e6e',ow:0,oc:'#000000',glow:0,gc:'#ffffff',sh:20,...C()}),
+flag:()=>({type:'flag',name:'Bendera',code:'MC',w:1100,h:500,wave:35,fr:1,...C(),y:260,rot:-6}),
+light:()=>({type:'light',name:'Cahaya',c:'#ffd27a',r:400,st:1,hot:.5,...C(),y:300,op:.9,bl:'screen'})};
+const S={
+text:[['text','Teks','area'],['font','Font','sel',FONTS],['size','Ukuran','r',20,500,1],['sp','Spasi huruf','r',-20,100,1],['lineH','Spasi baris','r',.5,1.6,.01],['c1','Warna atas','c'],['c2','Warna bawah','c'],['depth','Kedalaman 3D','r',0,120,1],['ea','Arah ekstrusi °','r',-180,180,1],['ec','Warna sisi dekat','c'],['ec2','Warna sisi jauh','c'],['ow','Outline','r',0,30,1],['oc','Warna outline','c'],['glow','Glow','r',0,100,1],['gc','Warna glow','c'],['sh','Bayangan','r',0,100,1],['skX','Miring X','r',-60,60,1],['skY','Miring Y','r',-30,30,1],['sx','Lebar','r',.3,3,.01],['sy','Tinggi','r',.3,3,.01]],
+img:[['w','Ukuran','r',50,1600,1],['flip','Balik horizontal','chk'],['fb','Pudar bawah','r',0,1,.01],['ft','Pudar atas','r',0,1,.01],['br','Kecerahan','r',.3,2,.01],['ct','Kontras','r',.5,2,.01],['sa','Saturasi','r',0,2,.01],['bl2','Blur','r',0,30,.5],['glow','Glow tepi','r',0,80,1],['gc','Warna glow','c']],
+flag:[['code','Negara','sel',Object.keys(FL)],['w','Lebar','r',100,1400,1],['h','Tinggi','r',60,900,1],['wave','Gelombang','r',0,80,1],['fr','Frekuensi','r',.2,3,.05]],
+light:[['c','Warna','c'],['r','Ukuran','r',30,900,1],['st','Rentang (streak)','r',1,14,.1],['hot','Inti putih','r',0,1,.01]]};
+const COM=[['x','Posisi X','r',-200,1280,1],['y','Posisi Y','r',-200,1550,1],['rot','Rotasi °','r',-180,180,1],['op','Opasitas','r',0,1,.01],['bl','Blend','blend']];
+const GS=[['c1','Warna latar 1','c'],['c2','Warna latar 2','c'],['c3','Warna latar 3','c'],['ang','Sudut gradien','r',-180,180,1],['tint','Warna tint','c'],['tintA','Intensitas tint','r',0,1,.01],['vig','Vignette','r',0,1,.01]];
+const fc={};
+function flagCv(code){if(fc[code])return fc[code];const d=FL[code],c=document.createElement('canvas');c.width=600;c.height=400;const g=c.getContext('2d');
+if(d[0]=='dot'){g.fillStyle='#fff';g.fillRect(0,0,600,400);g.fillStyle='#bc002d';g.beginPath();g.arc(300,200,120,0,7);g.fill()}
+else{const it=d.slice(1).map(s=>typeof s=='string'?[1,s]:s),tot=it.reduce((a,s)=>a+s[0],0),hz=d[0]=='h';let p=0;it.forEach(([wt,col])=>{g.fillStyle=col;const n=wt/tot*(hz?400:600);hz?g.fillRect(0,p,600,n+1):g.fillRect(p,0,n+1,400);p+=n})}
+return fc[code]=c}
+function prep(l){const k=[l.w,l.fb,l.ft,l.br,l.ct,l.sa,l.bl2,l.flip].join();if(l._k==k)return l._t;
+const w=Math.round(l.w),h=Math.round(l.w*l.im.height/l.im.width),t=document.createElement('canvas');t.width=w;t.height=h;const g=t.getContext('2d');
+g.filter=`brightness(${l.br}) contrast(${l.ct}) saturate(${l.sa}) blur(${l.bl2}px)`;if(l.flip){g.translate(w,0);g.scale(-1,1)}
+g.drawImage(l.im,0,0,w,h);g.setTransform(1,0,0,1,0,0);g.filter='none';g.globalCompositeOperation='destination-in';
+const ft=l.ft,fb=Math.min(l.fb,Math.max(0,.99-ft)),m=g.createLinearGradient(0,0,0,h);
+m.addColorStop(0,ft>0?'rgba(0,0,0,0)':'#000');m.addColorStop(ft+.0001,'#000');m.addColorStop(1-fb,'#000');m.addColorStop(1,fb>0?'rgba(0,0,0,0)':'#000');
+g.fillStyle=m;g.fillRect(0,0,w,h);l._k=k;return l._t=t}
+const R={
+text(l){const ls=l.text.split('\n'),lh=l.size*l.lineH;cx.font=`${l.size}px "${l.font}",Impact,sans-serif`;cx.textBaseline='middle';cx.textAlign='left';
+const P=[];let mw=10;ls.forEach((s,i)=>{const cs=[...s],ws=cs.map(c=>cx.measureText(c).width),tw=ws.reduce((a,b)=>a+b+l.sp,-l.sp);mw=Math.max(mw,tw);let x=-tw/2;const y=(i-(ls.length-1)/2)*lh;cs.forEach((c,j)=>{P.push([c,x,y]);x+=ws[j]+l.sp})});
+const th=lh*ls.length;l.bw=mw*l.sx;l.bh=th*l.sy;
+cx.transform(1,Math.tan(l.skY*Math.PI/180),Math.tan(l.skX*Math.PI/180),1,0,0);cx.scale(l.sx,l.sy);cx.lineJoin='round';
+const ea=l.ea*Math.PI/180,ow=l.ow*2;
+for(let i=l.depth;i>=1;i--){const col=mix(l.ec,l.ec2,i/l.depth);cx.fillStyle=col;cx.strokeStyle=col;cx.lineWidth=ow;
+if(i==l.depth&&l.sh>0){cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=l.sh;cx.shadowOffsetY=l.sh/2}else{cx.shadowBlur=0;cx.shadowOffsetY=0}
+const ox=Math.cos(ea)*i,oy=Math.sin(ea)*i;P.forEach(([c,x,y])=>{if(ow)cx.strokeText(c,x+ox,y+oy);cx.fillText(c,x+ox,y+oy)})}
+const fg=cx.createLinearGradient(0,-th/2,0,th/2);fg.addColorStop(0,l.c1);fg.addColorStop(1,l.c2);
+cx.shadowBlur=0;cx.shadowOffsetY=0;
+if(l.glow>0){cx.shadowColor=l.gc;cx.shadowBlur=l.glow}else if(!l.depth&&l.sh>0){cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=l.sh;cx.shadowOffsetY=l.sh/2}
+if(l.ow){cx.strokeStyle=l.oc;cx.lineWidth=ow;P.forEach(([c,x,y])=>cx.strokeText(c,x,y))}
+cx.fillStyle=fg;P.forEach(([c,x,y])=>cx.fillText(c,x,y))},
+img(l){const t=prep(l);l.bw=t.width;l.bh=t.height;if(l.glow>0){cx.shadowColor=l.gc;cx.shadowBlur=l.glow}cx.drawImage(t,-t.width/2,-t.height/2)},
+flag(l){const f=flagCv(l.code),w=l.w,h=l.h,sw=6;l.bw=w;l.bh=h;
+for(let x=0;x<w;x+=sw){const ph=x/w*l.fr*Math.PI*2,dy=Math.sin(ph)*l.wave,cs=Math.cos(ph);
+cx.drawImage(f,x/w*600,0,sw/w*600,400,x-w/2,-h/2+dy,sw+1,h);
+cx.fillStyle=cs>0?`rgba(0,0,0,${.22*cs})`:`rgba(255,255,255,${-.18*cs})`;cx.fillRect(x-w/2,-h/2+dy,sw+1,h)}},
+light(l){l.bw=l.r*l.st;l.bh=l.r;cx.scale(l.st,1);const g=cx.createRadialGradient(0,0,0,0,0,l.r);
+g.addColorStop(0,`rgba(255,255,255,${l.hot})`);g.addColorStop(.2,hexA(l.c,.85));g.addColorStop(1,hexA(l.c,0));cx.fillStyle=g;cx.fillRect(-l.r,-l.r,2*l.r,2*l.r)}};
+const cur=()=>L.find(l=>l.id==sel);
+function draw(){cx.globalAlpha=1;cx.globalCompositeOperation='source-over';cx.shadowBlur=0;
+const a=G.ang*Math.PI/180,sx=Math.sin(a)*H/2,sy=Math.cos(a)*H/2,g=cx.createLinearGradient(W/2-sx,H/2-sy,W/2+sx,H/2+sy);
+g.addColorStop(0,G.c1);g.addColorStop(.5,G.c2);g.addColorStop(1,G.c3);cx.fillStyle=g;cx.fillRect(0,0,W,H);
+for(const l of L){cx.save();cx.globalAlpha=l.op;cx.globalCompositeOperation=l.bl;cx.translate(l.x,l.y);cx.rotate(l.rot*Math.PI/180);R[l.type](l);cx.restore()}
+if(G.tintA>0){cx.save();cx.globalAlpha=G.tintA;cx.globalCompositeOperation='soft-light';cx.fillStyle=G.tint;cx.fillRect(0,0,W,H);cx.restore()}
+if(G.vig>0){const v=cx.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.8);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,`rgba(0,0,0,${G.vig})`);cx.fillStyle=v;cx.fillRect(0,0,W,H)}
+const s=!xp&&cur();if(s){cx.save();cx.translate(s.x,s.y);cx.rotate(s.rot*Math.PI/180);cx.strokeStyle='#00c8ff';cx.lineWidth=3;cx.setLineDash([12,8]);cx.strokeRect(-s.bw/2,-s.bh/2,s.bw,s.bh);cx.restore()}}
+function ctl(o,d,host,rf){const[k,lb,t,a,b,s]=d,r=document.createElement('label');r.className='row';const sp=document.createElement('span');sp.textContent=lb;r.append(sp);let i;
+if(t=='area'){i=document.createElement('textarea');i.rows=2;i.value=o[k]}
+else if(t=='sel'||t=='blend'){i=document.createElement('select');(t=='blend'?BL:a).forEach(op=>{const p=document.createElement('option');p.value=Array.isArray(op)?op[0]:op;p.textContent=Array.isArray(op)?op[1]:op;i.append(p)});i.value=o[k]}
+else{i=document.createElement('input');if(t=='r'){i.type='range';i.min=a;i.max=b;i.step=s;i.value=o[k]}else if(t=='c'){i.type='color';i.value=o[k]}else{i.type='checkbox';i.checked=o[k]}}
+if(t=='r'){const e=document.createElement('em');e.textContent=Math.round(o[k]*100)/100;sp.append(e);i._v=e}
+const h=()=>{o[k]=t=='chk'?i.checked:t=='r'?+i.value:i.value;if(i._v)i._v.textContent=Math.round(o[k]*100)/100;if(t=='area')listUI();draw()};
+i.addEventListener('input',h);i.addEventListener('change',h);r.append(i);host.append(r);if(rf)rf[k]=i}
+function listUI(){const ls=$('#ls');ls.innerHTML='';[...L].reverse().forEach(l=>{const d=document.createElement('div');d.className='li'+(l.id==sel?' on':'');d.dataset.id=l.id;
+const b=document.createElement('b');b.textContent=l.type=='text'?l.text.split('\n')[0].slice(0,20)||'Teks':l.name;d.append(b);const sp=document.createElement('span');
+[['up','↑'],['dn','↓'],['cp','⧉'],['rm','✕']].forEach(([a,t])=>{const x=document.createElement('button');x.dataset.a=a;x.textContent=t;sp.append(x)});d.append(sp);ls.append(d)})}
+function propsUI(){const h=$('#pr');h.innerHTML='';refs={};const l=cur();if(!l){h.textContent='Pilih layer atau tap objek di poster.';return}
+[...S[l.type],...COM].forEach(d=>ctl(l,d,h,refs))}
+const ui=()=>{listUI();propsUI()};
+function addL(o){o.id=uid++;L.push(o);sel=o.id;ui();draw()}
+function pick(kind){const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files[0];if(!f)return;const r=new FileReader();
+r.onload=()=>{const im=new Image();im.onload=()=>addL({type:'img',kind,name:NM[kind],im,w:500,fb:0,ft:0,br:1,ct:1,sa:1,bl2:0,glow:0,gc:'#000000',flip:false,...C(),...PD[kind]});im.src=r.result};r.readAsDataURL(f)};i.click()}
+$('#ad').onclick=e=>{const k=e.target.dataset.add;if(!k)return;if(D[k])addL(D[k]());else pick(k)};
+$('#ls').onclick=e=>{const d=e.target.closest('.li');if(!d)return;const id=+d.dataset.id,i=L.findIndex(l=>l.id==id),a=e.target.dataset.a;
+if(a=='up'&&i<L.length-1)[L[i],L[i+1]]=[L[i+1],L[i]];else if(a=='dn'&&i>0)[L[i],L[i-1]]=[L[i-1],L[i]];
+else if(a=='cp'){const n={...L[i],id:uid++,x:L[i].x+30,y:L[i].y+30,_k:null,_t:null};L.splice(i+1,0,n);sel=n.id}
+else if(a=='rm'){L.splice(i,1);sel=null}else sel=id;ui();draw()};
+const pt=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H}};
+function hit(p){for(let i=L.length-1;i>=0;i--){const l=L[i],dx=p.x-l.x,dy=p.y-l.y,a=-l.rot*Math.PI/180,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);if(Math.abs(lx)<=(l.bw||0)/2&&Math.abs(ly)<=(l.bh||0)/2)return l}}
+cv.addEventListener('pointerdown',e=>{const p=pt(e),l=hit(p);if(l){sel=l.id;drag={l,dx:l.x-p.x,dy:l.y-p.y};cv.setPointerCapture(e.pointerId)}else sel=null;ui();draw()});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e),l=drag.l;l.x=Math.round(p.x+drag.dx);l.y=Math.round(p.y+drag.dy);
+['x','y'].forEach(k=>{const i=refs[k];if(i){i.value=l[k];i._v.textContent=l[k]}});draw()});
+cv.addEventListener('pointerup',()=>drag=null);cv.addEventListener('pointercancel',()=>drag=null);
+GS.forEach(d=>ctl(G,d,$('#gl')));
+const msg=t=>$('#msg').textContent=t;
+$('#ex').onclick=async()=>{msg('');const d=window.claude?await claude.use('downloads'):null;
+xp=true;draw();cv.toBlob(async b=>{xp=false;draw();if(!d){const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='race-week-poster.png';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),9e3);return}try{await d.save({filename:'race-week-poster.png',data:b})}catch(e){if(e.code!=='declined')msg('Gagal menyimpan: '+(e.code||'error'))}},'image/png')};
+function demo(){
+addL({...D.light(),c:'#fff2a8',r:650,st:1.3,hot:.6,y:220,op:.9});
+addL({...D.flag(),y:280,w:1300,h:560,wave:45});
+addL({...D.light(),c:'#ff6a00',r:520,y:1050,x:880,op:.75});
+addL({...D.text(),name:'Nama GP',text:'MONACO',size:300,y:800,depth:50});
+addL({...D.text(),name:'Race Week',text:'RACE WEEK',size:110,y:960,c1:'#ff2a1f',c2:'#ff7a00',depth:16,ec:'#8a0a00',ec2:'#3a0000',skX:-8});
+addL({...D.text(),name:'Judul GP',text:'GRAND PRIX\nDE MONACO',font:'Archivo Black',size:70,y:1215,depth:8,ec:'#aaaaaa',ec2:'#555555',lineH:1});
+addL({...D.text(),name:'Tahun',text:'2026',font:'Oswald',size:40,y:1315,depth:0,sh:0});
+addL({...D.light(),c:'#ffffff',r:300,st:9,hot:.8,y:830,rot:-8,op:.45});
+sel=null;ui();draw()}
+demo();
+Promise.all(FONTS.filter(f=>f!='Impact').map(f=>document.fonts.load('100px "'+f+'"'))).then(draw).catch(()=>{});
+</script></body></html>
